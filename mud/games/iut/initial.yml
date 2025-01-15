@@ -1,0 +1,425 @@
+#Début travail de Bryan
+id: parking-000
+type: Location
+events:
+  info:
+    actor: "Parking de l'Hopital"
+  look:
+    actor: |
+      Vous êtes sur le parking de l'hopital.  Au nord-est, se trouve
+      l'entrée de l'Hopital. Mais comme vous êtes en situation de coronavirus, il vous faut trouver un masque.
+      A l'ouest, se trouve votre voiture.
+---
+id: voiture-000
+type: Location
+contains:
+  - masque-000
+events:
+  info:
+    actor: "Votre voiture"
+  look:
+    actor: |
+      Vous êtes dans votre voiture et sous le siège se trouve un masque chirurgical utile pour éviter d'attraper le coronavirus.
+      Au sud se trouve le parking de l'Hopital.
+---
+id: masque-000
+type: Thing
+name: masque
+props:
+  - takable
+  - masque-for-porte-porche-000
+  - putable
+events:
+  info:
+    actor: "Un masque pour se protéger du coranavirus"
+  look:
+    actor: |
+      Un masque pour se protéger du coranavirus
+---
+id: gelhydroalcolique-000
+type: Thing
+name: gel
+props:
+  - takable
+  - usable
+events:
+  info:
+    actor: "Un gel hydroalcolique pour se protéger du coranavirus"
+  look:
+    actor: |
+      Un gel hydroalcolique pour se protéger du coranavirus
+---
+id: portal-parking-voiture-000
+type: Portal
+exits:
+  - id: parking-000-ouest
+    location: parking-000
+    direction: ouest
+    events:
+      enter-portal:
+        actor   : "Vous rentrer dans votre voiture , une 4l avec seulement 300 000km. La sortie se trouve au Sud"
+        observer: "{{ actor.name }} rentre dans la voiture."
+      leave-portal:
+        observer: |
+          {{ actor.name }} sors de la voiture et vous rejoint
+          sur le parking de l'Hopital.
+  - id: voiture-000-sud
+    location: voiture-000
+    direction: sud
+    events:
+      enter-portal:
+        actor   : "Vous sortez de votre voiture"
+        observer: "{{ actor.name }} sort de la voiture"
+      leave-portal:
+        observer: "{{ actor.name }} vous rejoint dans la voiture"
+---
+id: porche-000
+type: Location
+events:
+  info:
+    actor: "Porche de l'Hopital"
+  look:
+    actor: |
+      Vous êtes sur le porche de l'Hopital.
+      Au nord-est, une porte donne accès au hall de l'Hopital. Au sud-ouest, une allée mène au
+      parking de l'Hopital.
+---
+id: portal-parking-porche-000
+type: Portal
+exits:
+  - id: parking-000-nord-est
+    location: parking-000
+    direction: nord-est
+  - id: porche-000-sud-ouest
+    location: porche-000
+    direction: sud-ouest
+---
+id: hall-000
+type: Location
+events:
+  info:
+    actor: "Le hall de l'Hopital"
+  look:
+    actor: |
+      Vous êtes dans le hall de l'accueil de l'hopital.
+      Au sud-ouest, la porte d'entrée mène au porche de l'Hopital.  Un
+      escalier mène à l'étage au nord-ouest.
+      Au nord se trouve l'endroit pour faire le test PCR.
+      A l'Est se trouve le couloir des malades.
+---
+id: portal-porche-hall-000
+type: Portal
+props:
+  - closed
+  - closable
+exits:
+  - id: porche-000-nord-est
+    location: porche-000
+    direction: nord-est
+    name:
+      - porte
+    gender: fem
+    props:
+      - for-enter
+    events:
+      enter-portal:
+        actor     : "Vous entrez dans l'hopital'"
+        observer  : "{{ actor.name }} entre dans l'accueil de L'hopital."
+        failed:
+          actor   : &porte001 |
+            La porte d'accès à l'accueil de l'hopital est réglementée.
+            Elle est actuellement fermée et ne peut être ouverte
+            que si vous portez un masque.
+          observer: &porte002 |
+            {{ actor.name }} tente en vain d'ouvrir la porte du
+            département info.
+      leave-portal:
+        actor     : "Vous sortez de l'accueil de l'hopital"
+        observer  : "{{ actor.name }} sort de l'hopital"
+      open        :
+        - props   : portal:closed
+          actor   : *porte001
+          observer: *porte002
+        - props   : -portal:closed
+          actor   : &porte003 "La porte est déjà ouverte!"
+      open-with   :
+        - props   :
+            - portal:closed
+            - object2:masque-for-porte-porche-000
+          effects :
+            type  : ChangePropEffect
+            modifs:
+              - -portal:closed
+          actor   : |
+            La porte de l'accueil s'ouvre avec un déclic.
+          observer: |
+            {{ actor.name }} ouvre la porte de l'accueil de l'Hopital
+            en portant un masque.
+        - props   :
+            - portal:closed
+            - -object2:masque-for-porte-porche-000
+          actor   : |
+            Vous tentez vainement d'ouvrir la porte avec
+            {{ object2.noun_the() }}
+          observer: |
+            {{ actor.name }} tente vainement d'ouvrir la porte du
+            département de l'hopital avec {{ object2.noun_a() }}
+        - props   :
+            - -portal:closed
+          actor   : *porte003
+          observer: |
+            {{ actor.name }} tente futilement d'ouvrir la porte de l'accueil de l'hopital
+            avec {{ object2.noun_a() }}, alors
+            qu'elle est déjà ouverte.
+      close       : &porte004
+        - props   : portal:closed
+          actor   : "Vous fermez la porte de l'hopital"
+          observer: "{{ actor.name }} ferme la porte de l'hopital"
+          effects :
+            - type  : ChangePropEffect
+              modifs: =portal-porche-hall-000:closed
+      close-with  : *porte004
+  - id: hall-000-sud-ouest
+    location: hall-000
+    direction: sud-ouest
+    name: porte
+    gender: fem
+    props:
+      - for-leave
+    events:
+      enter-portal:
+        observer  : "{{ actor.name }} sort de l'accueil de l'hopital"
+        failed:
+          actor   : |
+            La porte d'accès à l'accueil de l'hopital est sécurisée.
+            Elle est actuellement fermée et, même pour sortir,
+            elle ne peut être ouverte que si on porte un masque
+          observer: |
+            {{ actor.name }} tente en vain de sortir par la porte
+            de l'accueil de l'Hopital
+#Fin travail de Bryan
+---
+#Le travail de moqim commence
+id: sallemalade-000
+type: Location
+events:
+  info:
+    actor: "La salle d'attente des malades du COVID-19."
+  look:
+    actor: |
+      Vous êtes dans la salle d'attente des malades du COVID-19
+      Si vous êtes là, soit vous êtes malade, soit vous êtes une infirmière.
+      Le hall se trouve au nord-est.
+---
+id: 'couloirmalade-000'
+type: Location
+events:
+  info:
+    actor: "Le couloir d'attente des malades du COVID-19."
+  look:
+    actor: |
+      Vous êtes dans le couloir d'attente des malades de COVID-19
+      Si vous êtes là, soit vous êtes malade, soit vous êtes une infirmière.
+      Le hall se trouve au Sud-est. Au nord-est la salle des malades.
+---
+#portal entre le hall et le couloir
+id: portal-hall-couloirmalade-000
+type: Portal
+exits:
+  - id: couloirmalade-000-sud-est
+    location: couloirmalade-000
+    direction: sud-est
+  - id: hall-000-est
+    location: hall-000
+    direction: est
+---
+id: portal-couloirmalade-sallemalade-000
+type: Portal
+props:
+  - closed
+  - closable
+exits: 
+  - id: couloirmalade-000-nord-est
+    location: couloirmalade-000
+    direction: nord-est # direction pour aller dans la salle des malades quand on est dans le couloir
+    name:
+      - porte
+    gender: fem
+    props:
+      - for-enter
+    events:
+      enter-portal:
+        actor     : "Vous entrez dans la salle des malades de COVID-19."
+        observer  : "{{ actor.name }} entre dans la salle des malades de COVID-19."
+        failed:
+          actor   : &porte001 |
+            La porte d'accès a la salle des malades est sécurisée.
+            Elle est actuellement fermée et ne peut être ouverte
+            que si vous êtes protégé, (masque, des gants)
+          observer: &porte002 |
+            {{ actor.name }} tente en vain d'ouvrir la porte de
+            la salle des malades.
+      leave-portal:
+        actor     : "Vous sortez de la salle des malades"
+        observer  : "{{ actor.name }} sort de la salle des maaldes."
+
+      open        :
+        - props   : portal:closed
+          actor   : *porte001
+          observer: *porte002
+        - props   : -portal:closed
+          actor   : &porte003 "La porte est déjà ouverte!"
+      open-with   :
+        - props   :
+            - portal:closed 
+            - object2:gants-for-porte-salledesmalades-000
+          effects :
+            type  : ChangePropEffect
+            modifs:
+              - -portal:closed
+          actor   : |
+            La porte de la salle des malaes s'ouvre avec un déclic.
+          observer: |
+            {{ actor.name }} ouvre la porte de la salle des malades
+            en portant un masqueet les gants.
+        - props   :
+            - portal:closed
+            - -object3:gants-for-porte-salledesmalades-000
+          actor   : |
+            Vous tentez vainement d'ouvrir la porte avec
+            {{ object2.noun_the() }}
+          observer: |
+            {{ actor.name }} tente vainement d'ouvrir la porte de
+             de la salle des malades avec {{ object2.noun_a() }}
+        - props   :
+            - -portal:closed
+          actor   : *porte003
+          observer: |
+            {{ actor.name }} tente futilement d'ouvrir la porte de
+            la salle des malades avec {{ object2.noun_a() }}, alors
+            qu'elle est déjà ouverte.
+      close       : &porte004
+        - props   : portal:closed
+          actor   : "Vous fermez la porte de la salle des malades."
+          observer: "{{ actor.name }} ferme le porte de la salle des malades."
+          effects :
+            - type  : ChangePropEffect
+              modifs: =portal-hall-salledesmalades-000:closed
+      close-with  : *porte004
+  - id: sallemalade-000-nord-est
+    location: sallemalade-000
+    direction: nord-est #direction pour aller dans le couloir quand on est dans la salle des malades.
+    name: porte
+    gender: fem
+    props:
+      - for-leave
+    events:
+      enter-portal:
+        observer  : "{{ actor.name }} sort de la salle des malades."
+        failed:
+          actor   : |
+            La porte d'accès à la salle des malades est sécurisée.
+            Elle est actuellement fermée et, même pour sortir,
+            elle ne peut être ouverte que si on porte un masque et des gants.
+          observer: |
+            {{ actor.name }} tente en vain de sortir par la porte
+            de la salle des malades.
+---
+#portal entre le hall et l'escalier
+id: portal-hall-escalier-000
+type: Portal
+exits:
+  - id: escaliers-000-sud
+    location: escaliers-000
+    direction: sud
+  - id: hall-000-nord-ouest
+    location: hall-000
+    direction: nord-ouest
+---
+#salle de stockage
+id: sallestockage-000
+type: Location
+contains:
+  - gants-000
+  - gelhydroalcolique-000
+events:
+  info:
+    actor: "La salle là où vous pouvez trouver les gants et le gel hydroalcolique"
+  look:
+    actor: |
+      Vous êtes dans la salle des stockages, il existe des gants utiles pour éviter d'attraper le coronavirus.
+      Au nord-est se trouve l'escalier pour descendre au Hall.
+---
+#escaliers
+id: escaliers-000
+type: Location
+events: 
+  info:
+    actor: "Les escaliers pour monter dans les étages."
+  look:
+    actor: |
+      Vous êtes dans les escaliers. En haut des escaliers au nord-ouest se trouve la salle de stockage. Au sud le hall de l'Hopital.
+---
+#Objet gants
+id: gants-000
+type: Thing
+name: gants
+props:
+  - gants-for-porte-salledesmalades-000
+  - putable
+events:
+  info:
+    actor: "Des gants pour se protéger du coranavirus"
+  look:
+    actor: |
+      Des gants pour se protéger du coranavirus
+---
+#portal entre les escaliers et la salle de stokage
+id: portal-escalier-sallesstockage-000
+type: Portal
+exits:
+  - id: sallestockage-000-nord-est
+    location: sallestockage-000
+    direction: nord-est
+  - id: escaliers-000-nord-ouest
+    location: escaliers-000
+    direction: nord-ouest
+---
+#Fin travail de moqim
+#Vu que le compte de Damien ne fonctionne pas, nous avons pris le choix qu'on fasse ses commit depuis mon compte.
+#Travail de damien
+id: portal-hall-salledetest-000
+type: Portal
+exits:
+  - id: salledetest-000-sud
+    location: salledetest-000
+    direction: sud
+  - id: hall-000-nord
+    location: hall-000
+    direction: nord
+---
+id: salledetest-000
+type: Location
+contains:
+  - testpcr-000
+events:
+  info:
+     actor: "Salle de test"
+  look:
+     actor: |
+      Vous êtes dans la salle des test PCR. Au sud se trouve le Hall.
+---
+id: testpcr-000
+type: Thing
+name: testpcr
+props:
+  - takable
+  - doable
+events:
+  info:
+    actor: "Test PCR"
+  look:
+    actor: |
+      Des test pour effectuer un test pcr
+---
+#Fin du travail de damien
